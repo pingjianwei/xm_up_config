@@ -19,7 +19,7 @@
    %%商户列表
    , {xm_up_mer_list,
     [
-     {xm_gw_bankcard_verify, {xm_up_bankcard, ['B8999001']}}
+     {gw_xm_up_bankcard, {xm_up_bankcard, ['B8999001']}}
     ]}
    %%商户属行
    , {xm_up_mer_props,

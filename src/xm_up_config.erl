@@ -25,16 +25,21 @@
 -define(APP, ?MODULE).
 
 -record(state, {mer_list_map
-  , public_key}).
+  , public_key
+  , mer_router_map}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 -export([get_config/1,
-  get_mer_prop/2]).
+  get_mer_prop/2,
+  get_mer_id/1]).
 
 get_mer_prop(MerId, Key) when is_atom(MerId) ->
   gen_server:call(?SERVER, {get_mer_prop, MerId, Key}).
+
+get_mer_id(PaymentType) when is_atom(PaymentType) ->
+  gen_server:call(?SERVER, {get_mer_id, PaymentType}).
 
 get_config(Key) when is_atom(Key) ->
 %%  io:format("code test!").
@@ -71,6 +76,7 @@ start_link() ->
 init([]) ->
   State = #state{
     mer_list_map = get_mer_list()
+    , mer_router_map =get_route()
 %%    , public_key = get_xm_up_public_key()
   },
   lager:debug("~p get env config = ~p", [?SERVER, State]),
@@ -96,6 +102,13 @@ handle_call({get_mer_prop, MerId, Key}, _From, #state{mer_list_map = MerListMap}
   MerPropsMap = maps:get(MerId, MerListMap),
   Value = maps:get(Key, MerPropsMap, undefined),
   {reply, Value, State};
+
+handle_call({get_mer_id, PaymentType}, _From, #state{mer_router_map = MerRouteMap} = State)
+  when is_atom(PaymentType) ->
+  {_, MerList} = maps:get(PaymentType, MerRouteMap),
+  UpMerId = lists:nth(rand:uniform(length(MerList)), MerList),
+  {reply, UpMerId, State};
+
 handle_call({xm_up_config, Key}, _From, State) ->
   Return = do_get_config(Key, State),
   {reply, Return, State}.
@@ -243,3 +256,7 @@ load_public_key(MerId) when is_atom(MerId) ->
   PublicKey.
 
 %%--------------------------------------------------------------------
+
+get_route() ->
+  {ok, UpMerList} = application:get_env(?APP, xm_up_mer_list),
+  maps:from_list(UpMerList).
