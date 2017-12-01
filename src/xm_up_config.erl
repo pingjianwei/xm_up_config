@@ -35,6 +35,8 @@
   get_mer_prop/2,
   get_mer_id/1]).
 
+get_mer_prop(MerId, Key) when is_binary(MerId) ->
+  get_mer_prop(binary_to_atom(MerId,utf8), Key);
 get_mer_prop(MerId, Key) when is_atom(MerId) ->
   gen_server:call(?SERVER, {get_mer_prop, MerId, Key}).
 
