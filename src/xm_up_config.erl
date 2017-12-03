@@ -26,6 +26,9 @@
 
 -record(state, {mer_list_map
   , public_key
+  , success_resp_code_list
+  , fail_resp_code_list
+  , resp_code_mapping
   , mer_router_map}).
 
 %%%===================================================================
@@ -33,10 +36,11 @@
 %%%===================================================================
 -export([get_config/1,
   get_mer_prop/2,
+  get_code_mapping/1,
   get_mer_id/1]).
 
 get_mer_prop(MerId, Key) when is_binary(MerId) ->
-  get_mer_prop(binary_to_atom(MerId,utf8), Key);
+  get_mer_prop(binary_to_atom(MerId, utf8), Key);
 get_mer_prop(MerId, Key) when is_atom(MerId) ->
   gen_server:call(?SERVER, {get_mer_prop, MerId, Key}).
 
@@ -44,8 +48,12 @@ get_mer_id(PaymentType) when is_atom(PaymentType) ->
   gen_server:call(?SERVER, {get_mer_id, PaymentType}).
 
 get_config(Key) when is_atom(Key) ->
-%%  io:format("code test!").
   gen_server:call(?SERVER, {xm_up_config, Key}).
+
+get_code_mapping(Key) when is_atom(Key) ->
+  get_code_mapping(atom_to_binary(Key, utf8));
+get_code_mapping(Key) when is_binary(Key) ->
+  gen_server:call(?SERVER, {resp_code_mapping, Key}).
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
@@ -78,8 +86,9 @@ start_link() ->
 init([]) ->
   State = #state{
     mer_list_map = get_mer_list()
-    , mer_router_map =get_route()
-%%    , public_key = get_xm_up_public_key()
+    , mer_router_map = get_route()
+    , resp_code_mapping = getRespCodeMapping()
+    , public_key = get_xm_up_public_key()
   },
   lager:debug("~p get env config = ~p", [?SERVER, State]),
   {ok, State}.
@@ -110,6 +119,11 @@ handle_call({get_mer_id, PaymentType}, _From, #state{mer_router_map = MerRouteMa
   {_, MerList} = maps:get(PaymentType, MerRouteMap),
   UpMerId = lists:nth(rand:uniform(length(MerList)), MerList),
   {reply, UpMerId, State};
+
+handle_call({resp_code_mapping, Key}, _From, #state{resp_code_mapping = RespCodeMapping} = State)
+  when is_binary(Key) ->
+  Code = maps:get(Key, RespCodeMapping),
+  {reply, Code, State};
 
 handle_call({xm_up_config, Key}, _From, State) ->
   Return = do_get_config(Key, State),
@@ -191,10 +205,24 @@ get_keys_dir_config() ->
   UpKeysDirConfig.
 
 get_xm_up_public_key() ->
-  PublicKeyFileName = xfutils:get_filename(get_keys_dir_config() ++ [xm_up_public_key_file]),
+  PublicKeyFileName = xfutils:get_filename(?APP,get_keys_dir_config() ++ [xm_up_public_key_file]),
   lager:debug("PublicKeyFileName = ~p", [PublicKeyFileName]),
-  PublicKey = xfutils:load_public_key(PublicKeyFileName),
-  PublicKey.
+  try
+    {ok, PemBin} = file:read_file(PublicKeyFileName),
+    [Certificate] = public_key:pem_decode(PemBin),
+    %{_, DerCert, _} = Certificate,
+    %Decoded = public_key:pkix_decode_cert(DerCert, otp),
+    %PublicKey = Decoded#'OTPCertificate'.tbsCertificate#'OTPTBSCertificate'.subjectPublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey,
+    PublicKey = public_key:pem_entry_decode(Certificate),
+    lager:debug("public key = ~p", [PublicKey]),
+    PublicKey
+  catch
+    error:X ->
+      lager:error("read public key file ~p error! Msg = ~p", [PublicKeyFileName, X]),
+      {<<>>, <<>>}
+
+  end.
+
 
 %%--------------------------------------------------------------------
 
@@ -217,8 +245,8 @@ key_file_name(MerId, Type)
   when is_atom(MerId), is_atom(Type)
   , ((Type =:= private) or (Type =:= public)) ->
   MerIdBin = atom_to_binary(MerId, utf8),
-  lager:debug("keys derictor:~p",[get_keys_dir_config()]),
-  KeyPath = xfutils:get_path(get_keys_dir_config()),
+  lager:debug("keys derictor:~p", [get_keys_dir_config()]),
+  KeyPath = xfutils:get_path(?APP,get_keys_dir_config()),
   Ext = case Type of
           private ->
             ".key";
@@ -262,3 +290,7 @@ load_public_key(MerId) when is_atom(MerId) ->
 get_route() ->
   {ok, UpMerList} = application:get_env(?APP, xm_up_mer_list),
   maps:from_list(UpMerList).
+
+getRespCodeMapping() ->
+  {ok, RespCodeMapping} = application:get_env(?APP, resp_code_mapping),
+  RespCodeMapping.

@@ -1,37 +1,46 @@
 {application, xm_up_config,
- [{description, "An OTP application"},
-  {vsn, "0.1.0"},
-  {registered, []},
-  {mod, { xm_up_config_app, []}},
-  {applications,
-   [kernel,
-    stdlib,
-    lager
-   ]},
-  {env,[
-   {xm_private_key_default_pwd, ""}
-   , {xm_priv_dir, "/priv"}
-   , {xm_up_keys_dir_sub, "/keys"}
-   , {xm_up_keys_dir, [priv, xm_up_keys_dir_sub]}
-   , {xm_up_public_key_file, "xm_up_resp_test.cer"}
-   , {xm_des_key, <<"B8999001@@@@####$$$$xmyl">>}
+  [{description, "An OTP application"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {xm_up_config_app, []}},
+    {applications,
+      [kernel,
+        stdlib,
+        lager
+      ]},
+    {env, [
+      {xm_private_key_default_pwd, ""}
+      , {xm_priv_dir, "/priv"}
+      , {xm_up_keys_dir_sub, "/keys"}
+      , {xm_up_keys_dir, [priv, xm_up_keys_dir_sub]}
+      , {xm_up_public_key_file, "xm_up_resp_test.cer"}
+      , {xm_des_key, <<"B8999001@@@@####$$$$xmyl">>}
 
-   %%商户列表
-   , {xm_up_mer_list,
-    [
-     {gw_xm_up_bankcard, {xm_up_bankcard, ['B8999001']}}
-    ]}
-   %%商户属行
-   , {xm_up_mer_props,
-    #{
-     'B8999001'=>#{verifyType=><<"0040">>}
-    }}
-   %%厦门银联银行卡验证url，
-   , {xm_up_bankcard_url, <<"http://125.77.199.100:8888/v1.0/realname/">>}
-  ]},
-  {modules, []},
+      %%商户列表
+      , {xm_up_mer_list,
+        [
+          {gw_xm_up_bankcard, {xm_up_bankcard, ['B8999001']}}
+        ]}
+      %%商户属行
+      , {xm_up_mer_props,
+        #{
+          'B8999001'=>#{verifyType=><<"0040">>}
+        }}
+      %%厦门银联银行卡验证url，
+      , {xm_up_bankcard_url, <<"http://125.77.199.100:8888/v1.0/realname/">>}
 
-  {maintainers, []},
-  {licenses, []},
-  {links, []}
- ]}.
+%%      resp code config
+      , {success_resp_code_list, [<<"0000">>, <<"0001">>]}
+      , {fail_resp_code_list, [<<"0000">>, <<"0001">>]}
+      , {resp_code_mapping,
+        #{
+          <<"0000">> => <<"0000">>
+          , <<"0001">> => <<"0001">>
+        }}
+    ]},
+    {modules, []},
+
+    {maintainers, []},
+    {licenses, []},
+    {links, []}
+  ]}.
